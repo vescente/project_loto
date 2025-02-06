@@ -1,125 +1,98 @@
-#!/usr/bin/python3
-from random import randint
+from random import randint, shuffle
 
 
-def generate_unique_numbers(count, minbound, maxbound):
-    if count > maxbound - minbound + 1:
+def generate_unique_numbers(count, min_value, max_value):
+    if count > max_value - min_value + 1:
         raise ValueError('Incorrect input parameters')
-    ret = []
-    while len(ret) < count:
-        new = randint(minbound, maxbound)
-        if new not in ret:
-            ret.append(new)
-    return ret
+    unique_numbers = set()
+    while len(unique_numbers) < count:
+        unique_numbers.add(randint(min_value, max_value))
+    return list(unique_numbers)
 
 
 class Keg:
-    __num = None
-
     def __init__(self):
-        self.__num = randint(1, 90)
+        self._number = randint(1, 90)
 
     @property
-    def num(self):
-        return self.__num
+    def number(self):
+        return self._number
 
     def __str__(self):
-        return str(self.__num)
+        return str(self._number)
 
 
 class Card:
-    __rows = 3
-    __cols = 9
-    __nums_in_row = 5
-    __data = None
-    __emptynum = 0
-    __crossednum = -1
+    def __init__(self, rows=3, cols=9, nums_in_row=5, empty_value=0, crossed_value=0):
+        self._rows = rows
+        self._cols = cols
+        self._nums_in_row = nums_in_row
+        self._empty_value = empty_value
+        self._crossed_value = crossed_value
+        self._data = self._generate_card_data()
 
-    def __init__(self):
-        uniques_count = self.__nums_in_row * self.__rows
-        uniques = generate_unique_numbers(uniques_count, 1, 90)
-
-        self.__data = []
-        for i in range(0, self.__rows):
-            tmp = sorted(uniques[self.__nums_in_row *
-                         i: self.__nums_in_row * (i + 1)])
-            empty_nums_count = self.__cols - self.__nums_in_row
-            for j in range(0, empty_nums_count):
-                index = randint(0, len(tmp))
-                tmp.insert(index, self.__emptynum)
-            self.__data += tmp
-
-    def __str__(self):
-        delimiter = '--------------------------'
-        ret = delimiter + '\n'
-        for index, num in enumerate(self.__data):
-            if num == self.__emptynum:
-                ret += '  '
-            elif num == self.__crossednum:
-                ret += ' -'
-            elif num < 10:
-                ret += f' {str(num)}'
-            else:
-                ret += str(num)
-
-            if (index + 1) % self.__cols == 0:
-                ret += '\n'
-            else:
-                ret += ' '
-
-        return ret + delimiter
+    def _generate_card_data(self):
+        unique_numbers = generate_unique_numbers(self._nums_in_row * self._rows, 1, 90)
+        card_data = []
+        for i in range(self._rows):
+            row_numbers = sorted(unique_numbers[self._nums_in_row * i: self._nums_in_row * (i + 1)])
+            empty_slots = self._cols - self._nums_in_row
+            for _ in range(empty_slots):
+                row_numbers.insert(randint(0, len(row_numbers)), self._empty_value)
+            card_data.extend(row_numbers)
+        return card_data
 
     def __contains__(self, item):
-        return item in self.__data
+        return item in self._data
 
-    def cross_num(self, num):
-        for index, item in enumerate(self.__data):
-            if item == num:
-                self.__data[index] = self.__crossednum
-                return
-        raise ValueError(f'Number not in card: {num}')
+    def cross_number(self, number):
+        if number in self._data:
+            self._data[self._data.index(number)] = self._crossed_value
+        else:
+            raise ValueError(f'Number not in card: {number}')
 
-    def closed(self) -> bool:
-        return set(self.__data) == {self.__emptynum, self.__crossednum}
+    def is_closed(self):
+        return all(num == self._empty_value or num == self._crossed_value for num in self._data)
+
+    def __str__(self):
+        card_str = ''
+        for i in range(self._rows):
+            row = self._data[i * self._cols: (i + 1) * self._cols]
+            card_str += ' '.join(f'{num:2}' if num != self._empty_value else '  ' for num in row) + '\n'
+        return card_str
 
 
 class Game:
-    __usercard = None
-    __compcard = None
-    __numkegs = 90
-    __kegs = []
-    __gameover = False
-
     def __init__(self):
-        self.__usercard = Card()
-        self.__compcard = Card()
-        self.__kegs = generate_unique_numbers(self.__numkegs, 1, 90)
+        self._user_card = Card()
+        self._computer_card = Card()
+        self._kegs = generate_unique_numbers(90, 1, 90)
+        shuffle(self._kegs)  # Shuffle kegs for random order
+        self._game_over = False
 
-    def play_round(self) -> int:
-        """
-        :return:
-        0 - game must go on
-        1 - user wins
-        2 - computer wins
-        """
+    def play_round(self):
+        if not self._kegs:
+            self._game_over = True
+            return 0
 
-        keg = self.__kegs.pop()
-        print(f'Новый бочонок: {keg} (осталось {len(self.__kegs)})')
-        print(f'----- Ваша карточка ------\n{self.__usercard}')
-        print(f'-- Карточка компьютера ---\n{self.__compcard}')
+        keg = self._kegs.pop()
+        print(f'New keg: {keg} (remaining {len(self._kegs)})')
+        print(f'----- Your card ------\n{self._user_card}')
+        print(f'-- Computer card ---\n{self._computer_card}')
 
-        useranswer = input('Зачеркнуть цифру? (y/n)').lower().strip()
-        if useranswer == 'y' and not keg in self.__usercard or \
-           useranswer != 'y' and keg in self.__usercard:
+        user_answer = input('Cross out the number? (y/n)').lower().strip()
+        if (user_answer == 'y' and keg not in self._user_card) or \
+           (user_answer != 'y' and keg in self._user_card):
             return 2
 
-        if keg in self.__usercard:
-            self.__usercard.cross_num(keg)
-            if self.__usercard.closed():
+        if keg in self._user_card:
+            self._user_card.cross_number(keg)
+            if self._user_card.is_closed():
                 return 1
-        if keg in self.__compcard:
-            self.__compcard.cross_num(keg)
-            if self.__compcard.closed():
+
+        if keg in self._computer_card:
+            self._computer_card.cross_number(keg)
+            if self._computer_card.is_closed():
                 return 2
 
         return 0
