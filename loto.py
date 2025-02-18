@@ -20,6 +20,9 @@ class Keg:
 
     def __str__(self):
         return str(self._number)
+    
+    def __eq__(self, value):
+        return self._number == value._number
 
 
 class Card:
@@ -60,6 +63,9 @@ class Card:
             row = self._data[i * self._cols: (i + 1) * self._cols]
             card_str += ' '.join(f'{num:2}' if num != self._empty_value else '  ' for num in row) + '\n'
         return card_str
+    
+    def __eq__(self, value):
+        return self._data == value._data
 
 
 class Game:
@@ -99,6 +105,9 @@ class Game:
     
     def __str__(self):
         return f'Game with user card {self._user_card} and computer card {self._computer_card}'
+    
+    def __eq__(self, value):
+        return self._user_card == value._user_card and self._computer_card == value._computer_card
 
 
 if __name__ == '__main__':
