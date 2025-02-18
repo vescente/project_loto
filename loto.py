@@ -96,6 +96,9 @@ class Game:
                 return 2
 
         return 0
+    
+    def __str__(self):
+        return f'Game with user card {self._user_card} and computer card {self._computer_card}'
 
 
 if __name__ == '__main__':
